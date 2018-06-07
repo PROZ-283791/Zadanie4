@@ -2,7 +2,9 @@ package ptj;
 
 import java.io.StringReader;
 import java.net.URI;
-
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -23,29 +25,34 @@ public class HttpController {
 	@Produces(MediaType.TEXT_PLAIN)
 	public String averageText(@PathParam("table") String table, @PathParam("code") String code,
 			@PathParam("number") int number) {
-		return ""+getResponse(table, code, number);
+		return "" + getResponse(table, code, number);
 	}
-	
+
 	@GET
 	@Path("{table}/{code}/{number}")
 	@Produces(MediaType.TEXT_XML)
 	public String averageXml(@PathParam("table") String table, @PathParam("code") String code,
 			@PathParam("number") int number) {
-		return "<?xml version=\"1.0\"?><avg>"+getResponse(table, code, number)+"</avg>";
+		return "<?xml version=\"1.0\"?><avg>" + getResponse(table, code, number) + "</avg>";
 	}
+
 	@GET
 	@Path("{table}/{code}/{number}")
 	@Produces(MediaType.TEXT_HTML)
 	public String averageHtml(@PathParam("table") String table, @PathParam("code") String code,
 			@PathParam("number") int number) {
-		return "<html><body><h1>"+getResponse(table, code, number)+"</h1></body></html>";
+		return "<html><body><h1>" + getResponse(table, code, number) + "</h1></body></html>";
 	}
+
 	@GET
 	@Path("{table}/{code}/{number}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public String averageJson(@PathParam("table") String table, @PathParam("code") String code,
 			@PathParam("number") int number) {
-		return "{\"avg:"+getResponse(table, code, number)+"}";
+		JsonObjectBuilder builder = Json.createObjectBuilder();
+		builder.add("avg", getResponse(table, code, number));
+		JsonObject ob = builder.build();
+		return ob.toString();
 	}
 
 	public float getResponse(String table, String code, int number) {
@@ -55,23 +62,22 @@ public class HttpController {
 				.build();
 		WebTarget webTarget = client.target(uri);
 		String xmlAnswer = webTarget.request().accept(MediaType.TEXT_XML).get(String.class);
-		float avg=0;
 		ExchangeRatesSeries rates = new ExchangeRatesSeries();
 		try {
 			JAXBContext jaxbContext = JAXBContext.newInstance(ExchangeRatesSeries.class);
 			Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
 			rates = (ExchangeRatesSeries) jaxbUnmarshaller.unmarshal(new StringReader(xmlAnswer));
 			float sum = 0;
-			if (table.equals("c"))
-				for (Rate r: rates.getRates()) 
-					sum += (r.getBid() + r.getAsk()) / 2 ;
+			if (table.equals("c") || table.equals("C"))
+				for (Rate r : rates.getRates())
+					sum += (r.getBid() + r.getAsk()) / 2;
 			else
-				for (Rate r: rates.getRates()) 
+				for (Rate r : rates.getRates())
 					sum += r.getMid();
-			avg = sum / rates.getRates().size();
+			return sum / rates.getRates().size();
 		} catch (JAXBException e) {
 			e.printStackTrace();
 		}
-		return avg;
+		return 0;
 	}
 }
